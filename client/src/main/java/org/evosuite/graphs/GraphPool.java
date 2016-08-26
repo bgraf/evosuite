@@ -21,7 +21,9 @@ package org.evosuite.graphs;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ResourceBundle;
 
+import org.evosuite.ControlFlowWriter;
 import org.evosuite.Properties;
 import org.evosuite.graphs.ccfg.ClassControlFlowGraph;
 import org.evosuite.graphs.ccg.ClassCallGraph;
@@ -209,7 +211,7 @@ public class GraphPool {
 		methods.put(methodName, cfg);
 
 		if (Properties.WRITE_CFG)
-			cfg.toDot();
+			ControlFlowWriter.writeGraph(cfg);
 	}
 
 	/**
@@ -239,7 +241,7 @@ public class GraphPool {
 		methods.put(methodName, cfg);
 
 		if (Properties.WRITE_CFG)
-			cfg.toDot();
+			ControlFlowWriter.writeGraph(cfg);
 
 		if (DependencyAnalysis.shouldInstrument(cfg.getClassName(), cfg.getMethodName())) {
 			createAndRegisterControlDependence(cfg);
@@ -264,7 +266,7 @@ public class GraphPool {
 
 		cds.put(methodName, cd);
 		if (Properties.WRITE_CFG)
-			cd.toDot();
+			ControlFlowWriter.writeGraph(cd);
 	}
 
 	/**
@@ -308,11 +310,11 @@ public class GraphPool {
 
 		ClassCallGraph ccg = new ClassCallGraph(classLoader, className);
 		if (Properties.WRITE_CFG)
-			ccg.toDot();
+			ControlFlowWriter.writeGraph(ccg);
 
 		ClassControlFlowGraph ccfg = new ClassControlFlowGraph(ccg);
 		if (Properties.WRITE_CFG)
-			ccfg.toDot();
+			ControlFlowWriter.writeGraph(ccfg);
 
 		return ccfg;
 	}
