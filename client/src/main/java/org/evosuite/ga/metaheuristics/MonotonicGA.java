@@ -19,9 +19,11 @@
  */
 package org.evosuite.ga.metaheuristics;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import au.com.bytecode.opencsv.CSVWriter;
 import org.evosuite.Properties;
 import org.evosuite.TimeController;
 import org.evosuite.ga.Chromosome;
@@ -30,7 +32,6 @@ import org.evosuite.ga.ConstructionFailedException;
 import org.evosuite.ga.FitnessFunction;
 import org.evosuite.ga.FitnessReplacementFunction;
 import org.evosuite.ga.ReplacementFunction;
-import org.evosuite.ga.localsearch.LocalSearchBudget;
 import org.evosuite.utils.Randomness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,12 +42,29 @@ import org.slf4j.LoggerFactory;
  * @author Gordon Fraser
  */
 public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
+	/**
+	 *
+	 */
+	class FitnessRow {
+		int iteration;
+		double bestFitness;
+		double worstFitness;
+		int populationSize;
+		FitnessRow(int iteration, double bestFitness, double worstFitness, int populationSize) {
+			this.iteration = iteration;
+			this.bestFitness = bestFitness;
+			this.worstFitness = worstFitness;
+			this.populationSize = populationSize;
+		}
+	}
 
 	private static final long serialVersionUID = 7846967347821123201L;
 
 	protected ReplacementFunction replacementFunction;
 
 	private final Logger logger = LoggerFactory.getLogger(MonotonicGA.class);
+
+	private final List<FitnessRow> fitnessRows;
 
 	/**
 	 * Constructor
@@ -58,6 +76,8 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 		super(factory);
 
 		setReplacementFunction(new FitnessReplacementFunction());
+
+		fitnessRows = new ArrayList<>(1000);
 	}
 
 	/**
@@ -206,6 +226,13 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 		calculateFitnessAndSortPopulation();
 
 		this.notifyIteration();
+
+		// fitness logging
+		fitnessRows.clear();
+		fitnessRows.add(new FitnessRow(currentIteration,
+				population.get(0).getFitness(),
+				population.get(population.size() - 1).getFitness(),
+				population.size()));
 	}
 
 	private static final double DELTA = 0.000000001; // it seems there is some
@@ -310,11 +337,42 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 			logger.info("Best individual has fitness: " + population.get(0).getFitness());
 			logger.info("Worst individual has fitness: " + population.get(population.size() - 1).getFitness());
 
+			// log row
+			fitnessRows.add(new FitnessRow(currentIteration,
+					population.get(0).getFitness(),
+					population.get(population.size() - 1).getFitness(),
+					population.size()));
 		}
 		// archive
 		TimeController.execute(this::updateBestIndividualFromArchive, "update from archive", 5_000);
 
 		notifySearchFinished();
+
+		// write fitnesses
+		{
+			String filePath = Properties.REPORT_DIR + File.separator + "fitnesses.csv";
+			try (PrintWriter writer = new PrintWriter(filePath, "UTF-8");
+				 CSVWriter csvWriter = new CSVWriter(writer, ',')) {
+				String[] stringRow = new String[4];
+
+				for (FitnessRow row : fitnessRows) {
+					stringRow[0] = Integer.toString(row.iteration);
+					stringRow[1] = Double.toString(row.bestFitness);
+					stringRow[2] = Double.toString(row.worstFitness);
+					stringRow[3] = Integer.toString(row.populationSize);
+
+					csvWriter.writeNext(stringRow);
+				}
+
+			} catch (FileNotFoundException e) {
+				logger.warn("could not write fitnesses CSV file: " + e.getMessage());
+				e.printStackTrace();
+			} catch (UnsupportedEncodingException e) {
+				logger.warn("could not write fitnesses CSV file: " + e.getMessage());
+			} catch (IOException e) {
+				logger.warn("could not write fitnesses CSV file: IOException: " + e.getMessage());
+			}
+		}
 	}
 
 	private double getBestFitness() {
