@@ -50,11 +50,26 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 		double bestFitness;
 		double worstFitness;
 		int populationSize;
+
 		FitnessRow(int iteration, double bestFitness, double worstFitness, int populationSize) {
 			this.iteration = iteration;
 			this.bestFitness = bestFitness;
 			this.worstFitness = worstFitness;
 			this.populationSize = populationSize;
+		}
+	}
+
+	class ParentToOffspringFitness {
+		int iteration;
+		boolean wasUsed;
+		double parentFitness;
+		double offspringFitness;
+
+		ParentToOffspringFitness(int iteration, boolean wasUsed, double parentFitness, double offspringFitness) {
+			this.iteration = iteration;
+			this.wasUsed = wasUsed;
+			this.parentFitness = parentFitness;
+			this.offspringFitness = offspringFitness;
 		}
 	}
 
@@ -65,6 +80,8 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 	private final Logger logger = LoggerFactory.getLogger(MonotonicGA.class);
 
 	private final List<FitnessRow> fitnessRows;
+
+	private final List<ParentToOffspringFitness> parentToOffspringFitnesses;
 
 	/**
 	 * Constructor
@@ -78,6 +95,8 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 		setReplacementFunction(new FitnessReplacementFunction());
 
 		fitnessRows = new ArrayList<>(1000);
+
+		parentToOffspringFitnesses = new ArrayList<>(1000);
 	}
 
 	/**
@@ -126,13 +145,16 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 																// with existing
 																// individual
 
+
 			T offspring1 = (T) parent1.clone();
 			T offspring2 = (T) parent2.clone();
 
+			boolean performedCrossover = false;
 			try {
 				// Crossover
 				if (Randomness.nextDouble() <= Properties.CROSSOVER_RATE) {
 					crossoverFunction.crossOver(offspring1, offspring2);
+					performedCrossover = true;
 				}
 
 			} catch (ConstructionFailedException e) {
@@ -161,6 +183,28 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 				fitnessFunction.getFitness(offspring2);
 				notifyEvaluation(offspring2);
 			}
+
+			// log parent to offspring fitness
+			parentToOffspringFitnesses.add(
+					new ParentToOffspringFitness(currentIteration,
+							true,
+							parent1.getFitness(),
+							offspring1.getFitness()));
+			parentToOffspringFitnesses.add(
+					new ParentToOffspringFitness(currentIteration,
+							true,
+							parent2.getFitness(),
+							offspring2.getFitness()));
+			parentToOffspringFitnesses.add(
+					new ParentToOffspringFitness(currentIteration,
+							performedCrossover,
+							parent1.getFitness(),
+							offspring2.getFitness()));
+			parentToOffspringFitnesses.add(
+					new ParentToOffspringFitness(currentIteration,
+							performedCrossover,
+							parent2.getFitness(),
+							offspring1.getFitness()));
 
 			if (keepOffspring(parent1, parent2, offspring1, offspring2)) {
 				logger.debug("Keeping offspring");
@@ -233,6 +277,8 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 				population.get(0).getFitness(),
 				population.get(population.size() - 1).getFitness(),
 				population.size()));
+
+		parentToOffspringFitnesses.clear();
 	}
 
 	private static final double DELTA = 0.000000001; // it seems there is some
@@ -348,8 +394,15 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 
 		notifySearchFinished();
 
-		// write fitnesses
 		{
+			// ensure report directory..
+			File reportDir = new File(Properties.REPORT_DIR);
+			if (!reportDir.exists() && !reportDir.mkdirs()) {
+				logger.warn("could not ensure REPORT_DIR at " + Properties.REPORT_DIR);
+			}
+		}
+		{
+			// write fitnesses
 			String filePath = Properties.REPORT_DIR + File.separator + "fitnesses.csv";
 			try (PrintWriter writer = new PrintWriter(filePath, "UTF-8");
 				 CSVWriter csvWriter = new CSVWriter(writer, ',')) {
@@ -371,6 +424,33 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 				logger.warn("could not write fitnesses CSV file: " + e.getMessage());
 			} catch (IOException e) {
 				logger.warn("could not write fitnesses CSV file: IOException: " + e.getMessage());
+			}
+		}
+
+		{
+			// write parent to offspring fitness values
+			// columns will be ITERATION, USED, PARENT_FITNESS, OFFSPRING_FITNESS
+			String filePath = Properties.REPORT_DIR + File.separator + "parentToOffspring.csv";
+			try (PrintWriter writer = new PrintWriter(filePath, "UTF-8");
+				 CSVWriter csvWriter = new CSVWriter(writer, ',')) {
+				String[] stringRow = new String[4];
+
+				for (ParentToOffspringFitness row : parentToOffspringFitnesses) {
+					stringRow[0] = Integer.toString(row.iteration);
+					stringRow[1] = Boolean.toString(row.wasUsed);
+					stringRow[2] = Double.toString(row.parentFitness);
+					stringRow[3] = Double.toString(row.offspringFitness);
+
+					csvWriter.writeNext(stringRow);
+				}
+
+			} catch (FileNotFoundException e) {
+				logger.warn("could not write parentToOffspring CSV file: " + e.getMessage());
+				e.printStackTrace();
+			} catch (UnsupportedEncodingException e) {
+				logger.warn("could not write parentToOffspring CSV file: " + e.getMessage());
+			} catch (IOException e) {
+				logger.warn("could not write parentToOffspring CSV file: IOException: " + e.getMessage());
 			}
 		}
 	}
