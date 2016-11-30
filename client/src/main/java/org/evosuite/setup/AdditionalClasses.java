@@ -81,8 +81,21 @@ public class AdditionalClasses {
         }
     }
 
+
+    private boolean limitToCutImpl() {
+        return additionalClasses.size() == 0;
+    }
+
     private boolean shouldInstrumentImpl(String className) {
         return additionalClasses.contains(className);
+    }
+
+    /**
+     * Return whether branching goals should be limited to CUT.
+     * @return  <tt>true</tt> if there are additional classes, <tt>false</tt> otherwise.
+     */
+    public static boolean limitToCut() {
+        return getInstance().limitToCutImpl();
     }
 
     /**

@@ -27,6 +27,7 @@ import org.evosuite.Properties;
 import org.evosuite.coverage.MethodNameMatcher;
 import org.evosuite.graphs.cfg.BytecodeInstruction;
 import org.evosuite.graphs.cfg.ControlDependency;
+import org.evosuite.setup.AdditionalClasses;
 import org.evosuite.setup.DependencyAnalysis;
 import org.evosuite.testsuite.AbstractFitnessFactory;
 import org.slf4j.Logger;
@@ -60,6 +61,9 @@ public class BranchCoverageFactory extends
 			if(limitToCUT && !isCUT(className)) continue;
 			//when limitToCUT==false, consider all classes, but excludes libraries ones according the INSTRUMENT_LIBRARIES property
 			if(!limitToCUT && (!Properties.INSTRUMENT_LIBRARIES && !DependencyAnalysis.isTargetProject(className))) continue;
+
+			if (!isCUT(className) && !AdditionalClasses.shouldInstrument(className)) continue;
+
 			final MethodNameMatcher matcher = new MethodNameMatcher();
 			// Branchless methods
 			for (String method : BranchPool.getInstance(TestGenerationContext.getInstance().getClassLoaderForSUT()).getBranchlessMethods(className)) {
@@ -98,7 +102,7 @@ public class BranchCoverageFactory extends
 	/** {@inheritDoc} */
 	@Override
 	public List<BranchCoverageTestFitness> getCoverageGoals() {
-		return computeCoverageGoals(true);
+		return computeCoverageGoals(AdditionalClasses.limitToCut());
 	}
 
 	public List<BranchCoverageTestFitness> getCoverageGoalsForAllKnownClasses() {
