@@ -1569,6 +1569,11 @@ public class Properties {
 	@Parameter(key = "eclipse_plugin", group = "Plugin", description = "Running plugin for experiments. Use EvoSuiteTest annotation and decorate generated tests with (checked = false).")
 	public static boolean ECLIPSE_PLUGIN = false;
 
+	// ---------------------------------------------------------------
+    // N-by-one coverage and instrumentation
+	@Parameter(key = "additional_classes", group="N-by-one", description = "A path to a file containing class names of classes that will be covered besides the given CUT.")
+	public static String ADDITIONAL_CLASSES = "";
+
 	/**
 	 * Get all parameters that are available
 	 *
@@ -2167,7 +2172,7 @@ public class Properties {
 	 *            a {@link java.lang.String} object.
 	 * @param value
 	 *            an array of {@link java.lang.String} objects.
-	 * @throws org.evosuite.Properties#NoSuchParameterException
+	 * @throws org.evosuite.Properties.NoSuchParameterException
 	 *             if any.
 	 * @throws java.lang.IllegalArgumentException
 	 *             if any.

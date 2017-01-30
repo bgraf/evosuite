@@ -284,6 +284,11 @@ public class DependencyAnalysis {
 			}
 		}
 
+		// Also analyze if it is in the additional classes of N-by-one
+		if (AdditionalClasses.shouldInstrument(className)) {
+			return true;
+		}
+
 		return false;
 	}
 
@@ -314,6 +319,11 @@ public class DependencyAnalysis {
 				if(Properties.INSTRUMENT_LIBRARIES || DependencyAnalysis.isTargetProject(className))
 				return true;
 			}
+		}
+
+		// Also analyze if it is in the additional classes of N-by-one
+		if (AdditionalClasses.shouldInstrument(className)) {
+			return true;
 		}
 
 		return false;
