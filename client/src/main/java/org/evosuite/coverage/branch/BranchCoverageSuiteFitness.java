@@ -30,6 +30,7 @@ import org.evosuite.Properties;
 import org.evosuite.TestGenerationContext;
 import org.evosuite.coverage.archive.TestsArchive;
 import org.evosuite.graphs.cfg.CFGMethodAdapter;
+import org.evosuite.setup.AdditionalClasses;
 import org.evosuite.testcase.ExecutableChromosome;
 import org.evosuite.testcase.statements.Statement;
 import org.evosuite.testcase.TestFitnessFunction;
@@ -49,7 +50,7 @@ import org.slf4j.LoggerFactory;
 public class BranchCoverageSuiteFitness extends TestSuiteFitnessFunction {
 	private static final long serialVersionUID = 2991632394620406243L;
 
-	private final static Logger logger = LoggerFactory.getLogger(TestSuiteFitnessFunction.class);
+	private final static Logger logger = LoggerFactory.getLogger(BranchCoverageSuiteFitness.class);
 
 	// Coverage targets
 	public int totalGoals;
@@ -100,16 +101,41 @@ public class BranchCoverageSuiteFitness extends TestSuiteFitnessFunction {
 	public BranchCoverageSuiteFitness(ClassLoader classLoader) {
 		
 		String prefix = Properties.TARGET_CLASS_PREFIX;
+		logger.info("TARGET_CLASS_PREFIX = " + prefix);
 
 		if (prefix.isEmpty())
 			prefix = Properties.TARGET_CLASS;
 
-		totalMethods = CFGMethodAdapter.getNumMethodsPrefix(classLoader, prefix);
-		totalBranches = BranchPool.getInstance(classLoader).getBranchCountForPrefix(prefix);
-		numBranchlessMethods = BranchPool.getInstance(classLoader).getNumBranchlessMethodsPrefix(prefix);
-		branchlessMethods = BranchPool.getInstance(classLoader).getBranchlessMethodsPrefix(prefix);
-		methods = CFGMethodAdapter.getMethodsPrefix(classLoader, prefix);
-		
+		logger.info("PREFIX = " + prefix);
+
+		//totalMethods = CFGMethodAdapter.getNumMethodsPrefix(classLoader, prefix);
+		//totalBranches = BranchPool.getInstance(classLoader).getBranchCountForPrefix(prefix);
+		//numBranchlessMethods = BranchPool.getInstance(classLoader).getNumBranchlessMethodsPrefix(prefix);
+		//branchlessMethods = BranchPool.getInstance(classLoader).getBranchlessMethodsPrefix(prefix);
+		//methods = CFGMethodAdapter.getMethodsPrefix(classLoader, prefix);
+
+		BranchPool branchPool = BranchPool.getInstance(classLoader);
+
+		totalBranches = branchPool.getBranchCountForClass(Properties.TARGET_CLASS);
+		int numBranchlessMethodsC = branchPool.getNumBranchlessMethods(Properties.TARGET_CLASS);
+		branchlessMethods = new HashSet<>();
+		branchlessMethods.addAll(branchPool.getBranchlessMethods(Properties.TARGET_CLASS));
+		methods = new HashSet<>();
+		methods.addAll(CFGMethodAdapter.getMethods(classLoader, Properties.TARGET_CLASS));
+
+		for (String className : AdditionalClasses.getAdditionalClasses()) {
+			if (!className.equals(Properties.TARGET_CLASS)) {
+				totalBranches += branchPool.getBranchCountForClass(className);
+				numBranchlessMethodsC += branchPool.getNumBranchlessMethods(className);
+				branchlessMethods.addAll(branchPool.getBranchlessMethods(className));
+				methods.addAll(CFGMethodAdapter.getMethods(classLoader, className));
+			}
+		}
+
+		numBranchlessMethods = numBranchlessMethodsC;
+		totalMethods = methods.size();
+
+
 		branchesId = new HashSet<>();
 
 		totalGoals = 2 * totalBranches + numBranchlessMethods;

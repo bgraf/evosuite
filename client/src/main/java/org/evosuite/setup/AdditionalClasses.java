@@ -81,6 +81,12 @@ public class AdditionalClasses {
         }
     }
 
+    private Set<String> getAdditionalClassesImpl() { return additionalClasses; }
+
+    public static Set<String> getAdditionalClasses() {
+        return getInstance().getAdditionalClassesImpl();
+    }
+
 
     private boolean limitToCutImpl() {
         return additionalClasses.size() == 0;
